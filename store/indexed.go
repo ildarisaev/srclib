@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"sourcegraph.com/sourcegraph/rwvfs"
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -266,9 +267,9 @@ func (s *indexedTreeStore) Refs(fs ...RefFilter) ([]*graph.Ref, error) {
 	return s.fsTreeStore.Refs(fs...)
 }
 
-func (s *indexedTreeStore) Import(u *unit.SourceUnit, data graph.Output) error {
+func (s *indexedTreeStore) Import(u *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) error {
 	s.checkSourceUnitFiles(u, data)
-	if err := s.fsTreeStore.Import(u, data); err != nil {
+	if err := s.fsTreeStore.Import(u, depData, data); err != nil {
 		return err
 	}
 	return nil

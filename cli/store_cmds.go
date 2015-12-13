@@ -27,6 +27,7 @@ import (
 	"sourcegraph.com/sourcegraph/go-flags"
 	"sourcegraph.com/sourcegraph/rwvfs"
 	"sourcegraph.com/sourcegraph/srclib/config"
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/grapher"
 	"sourcegraph.com/sourcegraph/srclib/plan"
@@ -247,7 +248,6 @@ func Import(buildDataFS vfs.FileSystem, stor interface{}, opt ImportOpt) error {
 	par := parallel.NewRun(10)
 	for _, rule_ := range mf.Rules {
 		rule := rule_
-
 		if opt.Unit != "" || opt.UnitType != "" {
 			type ruleForSourceUnit interface {
 				SourceUnit() *unit.SourceUnit
@@ -282,6 +282,16 @@ func Import(buildDataFS vfs.FileSystem, stor interface{}, opt ImportOpt) error {
 					}
 				}
 
+				var depData []*dep.Resolution
+				depresolveTarget := strings.Replace(rule.Target(), ".graph.json", ".depresolve.json", -1) // TODO(beyang): KLUDGE
+				if err := readJSONFileFS(buildDataFS, depresolveTarget, &depData); err != nil {
+					if os.IsNotExist(err) {
+						log.Printf("Warning: no depresolve data for unit %s %s.", rule.Unit.Type, rule.Unit.Name)
+					} else if err != nil {
+						return fmt.Errorf("error reading JSON file %s for unit %s %s: %s", depresolveTarget, rule.Unit.Type, rule.Unit.Name, err)
+					}
+				}
+
 				// HACK: Transfer docs to [def].Docs.
 				docsByPath := make(map[string]*graph.Doc, len(data.Docs))
 				for _, doc := range data.Docs {
@@ -295,10 +305,12 @@ func Import(buildDataFS vfs.FileSystem, stor interface{}, opt ImportOpt) error {
 
 				switch imp := stor.(type) {
 				case store.RepoImporter:
-					if err := imp.Import(opt.CommitID, rule.Unit, data); err != nil {
+					if err := imp.Import(opt.CommitID, rule.Unit, depData, data); err != nil {
 						return fmt.Errorf("error running store.RepoImporter.Import: %s", err)
 					}
 				case store.MultiRepoImporter:
+					// TODO(beyang): figure out where this is used and
+					// include depData in its arguments
 					if err := imp.Import(opt.Repo, opt.CommitID, rule.Unit, data); err != nil {
 						return fmt.Errorf("error running store.MultiRepoImporter.Import: %s", err)
 					}
@@ -455,7 +467,8 @@ func (c *StoreImportCmd) sample(s interface{}) error {
 	switch imp := s.(type) {
 	case store.RepoImporter:
 		c.Repo = ""
-		if err := imp.Import(c.CommitID, unit, *data); err != nil {
+		// TODO(beyang): include dep data
+		if err := imp.Import(c.CommitID, unit, nil, *data); err != nil {
 			return err
 		}
 	case store.MultiRepoImporter:

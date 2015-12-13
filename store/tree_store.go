@@ -1,6 +1,7 @@
 package store
 
 import (
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -26,7 +27,7 @@ type TreeImporter interface {
 	// until others are imported in the future (this makes it possible
 	// to distinguish between a tree that has no source units and a
 	// tree whose source units simply haven't been imported yet).
-	Import(*unit.SourceUnit, graph.Output) error
+	Import(*unit.SourceUnit, []*dep.Resolution, graph.Output) error
 }
 
 // A TreeStoreImporter implements both TreeStore and TreeImporter.

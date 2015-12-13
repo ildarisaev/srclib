@@ -75,7 +75,14 @@ type SourceUnit struct {
 	// dependency resolution on these entries. This is because the scanner is
 	// run frequently and should execute very quickly, and dependency resolution
 	// is often slow (requiring network access, etc.).
+	//
+	// TODO(beyang): remove this field once ResDeps is fully operational
 	Dependencies []interface{} `json:",omitempty"`
+
+	// ResDeps is the list of resolved dependencies.
+	//
+	// TODO: change to []*Resolution (have to move this into new package)
+	ResDeps interface{}
 
 	// Info is an optional field that contains additional information used to
 	// display the source unit

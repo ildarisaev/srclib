@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/rogpeppe/rog-go/parallel"
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -26,7 +27,7 @@ type RepoStore interface {
 type RepoImporter interface {
 	// Import imports srclib build data for a source unit at a
 	// specific version into the store.
-	Import(commitID string, unit *unit.SourceUnit, data graph.Output) error
+	Import(commitID string, unit *unit.SourceUnit, deps []*dep.Resolution, data graph.Output) error
 }
 
 type RepoIndexer interface {

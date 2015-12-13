@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -58,7 +59,7 @@ func (s *memoryMultiRepoStore) openAllRepoStores() (map[string]RepoStore, error)
 
 var _ repoStoreOpener = (*memoryMultiRepoStore)(nil)
 
-func (s *memoryMultiRepoStore) Import(repo, commitID string, unit *unit.SourceUnit, data graph.Output) error {
+func (s *memoryMultiRepoStore) Import(repo, commitID string, unit *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) error {
 	if s.repos == nil {
 		s.repos = map[string]*memoryRepoStore{}
 	}
@@ -68,7 +69,7 @@ func (s *memoryMultiRepoStore) Import(repo, commitID string, unit *unit.SourceUn
 	if unit != nil {
 		cleanForImport(&data, repo, unit.Type, unit.Name)
 	}
-	return s.repos[repo].Import(commitID, unit, data)
+	return s.repos[repo].Import(commitID, unit, depData, data)
 }
 
 func (s *memoryMultiRepoStore) String() string { return "memoryMultiRepoStore" }
@@ -103,7 +104,7 @@ func (s *memoryRepoStore) Versions(f ...VersionFilter) ([]*Version, error) {
 	return versions, nil
 }
 
-func (s *memoryRepoStore) Import(commitID string, unit *unit.SourceUnit, data graph.Output) error {
+func (s *memoryRepoStore) Import(commitID string, unit *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) error {
 	s.versions = append(s.versions, &Version{CommitID: commitID})
 	if s.trees == nil {
 		s.trees = map[string]*memoryTreeStore{}

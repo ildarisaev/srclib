@@ -2,8 +2,10 @@ package store
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,6 +22,7 @@ import (
 	"sort"
 
 	"sourcegraph.com/sourcegraph/rwvfs"
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -175,7 +178,7 @@ func (s *fsMultiRepoStore) Import(repo, commitID string, unit *unit.SourceUnit, 
 	if err := rwvfs.MkdirAll(s.fs, subpath); err != nil {
 		return err
 	}
-	return s.openRepoStore(repo).(RepoImporter).Import(commitID, unit, data)
+	return s.openRepoStore(repo).(RepoImporter).Import(commitID, unit, nil, data)
 }
 
 func (s *fsMultiRepoStore) Index(repo, commitID string) error {
@@ -234,12 +237,12 @@ func (s *fsRepoStore) versionDirs() ([]string, error) {
 	return dirs, nil
 }
 
-func (s *fsRepoStore) Import(commitID string, unit *unit.SourceUnit, data graph.Output) error {
+func (s *fsRepoStore) Import(commitID string, unit *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) error {
 	if unit != nil {
 		cleanForImport(&data, "", unit.Type, unit.Name)
 	}
 	ts := s.newTreeStore(commitID)
-	return ts.Import(unit, data)
+	return ts.Import(unit, depData, data)
 }
 
 func (s *fsRepoStore) Index(commitID string) error {
@@ -299,6 +302,8 @@ func newFSTreeStore(fs rwvfs.FileSystem) *fsTreeStore {
 var c_fsTreeStore_unitsOpened = &counter{count: new(int64)}
 
 func (s *fsTreeStore) Units(f ...UnitFilter) ([]*unit.SourceUnit, error) {
+	log.Printf("# fstreeStore.Units")
+
 	var unitFilenames []string
 
 	unitIDs, err := scopeUnits(storeFilters(f))
@@ -326,6 +331,14 @@ func (s *fsTreeStore) Units(f ...UnitFilter) ([]*unit.SourceUnit, error) {
 			return nil, err
 		}
 		if unitFilters(f).SelectUnit(unit) {
+			depFile := strings.Replace(filename, ".unit.json", ".depresolve.json", -1) // TODO(beyang): kludge
+			deps, err := s.openDepFile(depFile)
+			if err != nil {
+				log.Printf("# ERR: %s", err)
+				return nil, err
+			}
+			unit.ResDeps = deps
+
 			units = append(units, unit)
 		}
 	}
@@ -352,6 +365,25 @@ func (s *fsTreeStore) openUnitFile(filename string) (u *unit.SourceUnit, err err
 	return &unit, err
 }
 
+func (s *fsTreeStore) openDepFile(filename string) (deps []*dep.Resolution, err error) {
+	f, err := s.fs.Open(filename)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, errUnitNoInit
+		}
+		return nil, err
+	}
+	defer func() {
+		err2 := f.Close()
+		if err == nil {
+			err = err2
+		}
+	}()
+
+	err = json.NewDecoder(f).Decode(&deps)
+	return deps, err
+}
+
 func (s *fsTreeStore) unitFilenames() ([]string, error) {
 	var files []string
 	w := fs.WalkFS(".", rwvfs.Walkable(s.fs))
@@ -371,9 +403,16 @@ func (s *fsTreeStore) unitFilename(unitType, unit string) string {
 	return path.Join(unit, unitType+unitFileSuffix)
 }
 
-const unitFileSuffix = ".unit.json"
+func (s *fsTreeStore) depFilename(unitType, unit string) string {
+	return path.Join(unit, unitType+depFileSuffix)
+}
 
-func (s *fsTreeStore) Import(u *unit.SourceUnit, data graph.Output) (err error) {
+const (
+	unitFileSuffix = ".unit.json"
+	depFileSuffix  = ".depresolve.json"
+)
+
+func (s *fsTreeStore) Import(u *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) (err error) {
 	if u == nil {
 		return rwvfs.MkdirAll(s.fs, ".")
 	}
@@ -393,6 +432,21 @@ func (s *fsTreeStore) Import(u *unit.SourceUnit, data graph.Output) (err error) 
 		}
 	}()
 	if _, err := Codec.NewEncoder(f).Encode(u); err != nil {
+		return err
+	}
+
+	depFilename := s.depFilename(u.Type, u.Name)
+	depF, err := s.fs.Create(depFilename)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err2 := depF.Close()
+		if err == nil {
+			err = err2
+		}
+	}()
+	if err := json.NewEncoder(depF).Encode(depData); err != nil {
 		return err
 	}
 

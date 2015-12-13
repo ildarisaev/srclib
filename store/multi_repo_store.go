@@ -26,6 +26,8 @@ type MultiRepoStore interface {
 type MultiRepoImporter interface {
 	// Import imports srclib build data for a source unit at a
 	// specific version into the store.
+	//
+	// TODO(beyang): pass in []*dep.Resolution information for import
 	Import(repo, commitID string, unit *unit.SourceUnit, data graph.Output) error
 }
 

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"sourcegraph.com/sourcegraph/srclib/dep"
 	"sourcegraph.com/sourcegraph/srclib/graph"
 	"sourcegraph.com/sourcegraph/srclib/unit"
 )
@@ -11,7 +12,7 @@ type MockRepoStoreImporter struct {
 	Import_ func(commitID string, unit *unit.SourceUnit, data graph.Output) error
 }
 
-func (m MockRepoStoreImporter) Import(commitID string, unit *unit.SourceUnit, data graph.Output) error {
+func (m MockRepoStoreImporter) Import(commitID string, unit *unit.SourceUnit, depData []*dep.Resolution, data graph.Output) error {
 	return m.Import_(commitID, unit, data)
 }
 

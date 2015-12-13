@@ -1,5 +1,6 @@
 package dep
 
+// TODO(beyang): this is unused
 type ResolvedDep struct {
 	// FromRepo is the repository from which this dependency originates.
 	FromRepo string `json:",omitempty"`
