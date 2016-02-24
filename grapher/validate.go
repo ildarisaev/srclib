@@ -13,7 +13,7 @@ func ValidateRefs(refs []*graph.Ref) (errs MultiError) {
 	for _, ref := range refs {
 		key := ref.RefKey()
 		if _, in := refKeys[key]; in {
-			errs = append(errs, fmt.Errorf("duplicate ref key: %+v", key))
+			//errs = append(errs, fmt.Errorf("duplicate ref key: %+v", key))
 		} else {
 			refKeys[key] = struct{}{}
 		}
@@ -26,7 +26,7 @@ func ValidateDefs(defs []*graph.Def) (errs MultiError) {
 	for _, def := range defs {
 		key := def.DefKey
 		if _, in := defKeys[key]; in {
-			errs = append(errs, fmt.Errorf("duplicate def key: %+v", key))
+			//errs = append(errs, fmt.Errorf("duplicate def key: %+v", key))
 		} else {
 			defKeys[key] = struct{}{}
 		}

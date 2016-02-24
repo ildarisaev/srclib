@@ -1,7 +1,7 @@
 package graph
 
 import (
-	"fmt"
+	//"fmt"
 	"regexp"
 )
 
@@ -106,7 +106,7 @@ func (defs Defs) KeySet() (keys map[DefKey]struct{}, err error) {
 	keys = make(map[DefKey]struct{})
 	for _, def := range defs {
 		if _, in := keys[def.DefKey]; in {
-			return nil, fmt.Errorf("duplicate def key %+v", def.DefKey)
+			//return nil, fmt.Errorf("duplicate def key %+v", def.DefKey)
 		}
 		keys[def.DefKey] = struct{}{}
 	}
