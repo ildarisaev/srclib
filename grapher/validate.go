@@ -39,7 +39,7 @@ func ValidateDocs(docs []*graph.Doc) (errs MultiError) {
 	for _, doc := range docs {
 		key := doc.Key()
 		if _, in := docKeys[key]; in {
-			errs = append(errs, fmt.Errorf("duplicate doc key: %+v", key))
+			//errs = append(errs, fmt.Errorf("duplicate doc key: %+v", key))
 		} else {
 			docKeys[key] = struct{}{}
 		}
